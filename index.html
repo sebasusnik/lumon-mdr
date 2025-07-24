@@ -162,13 +162,12 @@
             justify-items: center;
             user-select: none;
             overflow-y: auto;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
         #refinement-grid::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, and Opera */
+            display: none;
         }
-
 
         .grid-number {
             text-align: center;
@@ -178,7 +177,7 @@
             cursor: default;
         }
         .grid-number span {
-             display: inline-block; /* Required for transform */
+             display: inline-block;
              transition: transform 0.1s linear;
         }
         
@@ -216,31 +215,118 @@
         #refinement-footer {
             display: flex;
             justify-content: space-around;
-            /* FIX: Reduced padding and margin to give more space to the grid */
-            padding: 10px;
+            padding: 10px 10px 0 10px;
             border-top: 2px solid var(--text-color);
             margin-top: 5px;
             gap: 15px;
         }
+        
+        .bin { 
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-        .bin { flex: 1; text-align: center; }
-        .bin-label { font-size: 20px; margin-bottom: 8px; }
+        .bin-box-container {
+            width: 80%;
+            height: 30px;
+            perspective: 800px;
+            margin-bottom: 8px;
+        }
+        .bin-box {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(-20deg);
+        }
+        .bin-side {
+            position: absolute;
+            border: 1px solid var(--text-color);
+            background: var(--bin-bg);
+            box-shadow: 0 0 10px var(--glow-color) inset;
+        }
+        .bin-front {
+            width: 100%;
+            height: 100%;
+            transform: translateZ(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .bin-lid {
+            position: absolute;
+            width: 50%;
+            height: 20px;
+            border: 1px solid var(--text-color);
+            background-color: var(--monitor-bg);
+            box-sizing: border-box;
+            top: 0;
+            transition: transform 0.4s cubic-bezier(0.6, 0, 0.4, 1);
+            transform: rotateX(90deg) translateY(-10px);
+        }
+        .lid-left {
+            left: 0;
+            transform-origin: left;
+        }
+        .lid-right {
+            right: 0;
+            transform-origin: right;
+        }
+        .bin-box.open .lid-left {
+            transform: rotateX(90deg) translateY(-10px) rotateY(-120deg);
+        }
+        .bin-box.open .lid-right {
+            transform: rotateX(90deg) translateY(-10px) rotateY(120deg);
+        }
+        
+        .bin-label { 
+            font-size: 22px; 
+        }
+
         .bin-progress-container {
-            height: 12px;
+            width: 80%;
+            height: 20px;
             border: 1px solid var(--text-color);
             background-color: var(--bin-bg);
             border-radius: 2px;
             padding: 1px;
-            margin-bottom: 8px;
+            position: relative;
         }
         .bin-progress-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
             height: 100%;
             width: 0%;
             background-color: var(--text-color);
             box-shadow: var(--text-shadow);
             transition: width 0.5s ease-out;
+            z-index: 1;
         }
-        .bin-value { font-size: 18px; }
+        .bin-value-base, .bin-value-inverted {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .bin-value-base {
+            color: var(--text-color);
+            z-index: 2; /* FIX: Behind inverted text */
+        }
+        .bin-value-inverted {
+            color: var(--monitor-bg);
+            z-index: 3; /* FIX: On top of base text */
+            clip-path: inset(0 100% 0 0);
+            transition: none; /* Let JS handle updates instantly */
+        }
+
 
         #completion-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -306,8 +392,8 @@
             numEl.classList.add('sorted');
             numEl.className = numEl.className.replace(/grown-\d|grown-neighbor/g, '').trim();
 
-            const binProgressEl = document.getElementById(`progress-${targetBin.label}`);
-            const binRect = binProgressEl.getBoundingClientRect();
+            const binBoxEl = document.getElementById(`bin-box-${targetBin.label}`);
+            const binRect = binBoxEl.getBoundingClientRect();
 
             requestAnimationFrame(() => {
                  flyingEl.style.left = `${binRect.left + (binRect.width / 2)}px`;
@@ -320,11 +406,15 @@
                 flyingEl.remove();
                 targetBin.value++;
                 const percentage = Math.round((targetBin.value / targetBin.target) * 100);
-                const progressBar = document.getElementById(`progress-${targetBin.label}`);
-                const valueText = document.getElementById(`value-${targetBin.label}`);
                 
+                const progressBar = document.getElementById(`progress-${targetBin.label}`);
+                const valueBase = document.getElementById(`value-base-${targetBin.label}`);
+                const valueInverted = document.getElementById(`value-inverted-${targetBin.label}`);
+
                 progressBar.style.width = `${percentage}%`;
-                valueText.textContent = `${percentage}%`;
+                valueInverted.style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
+                valueBase.textContent = `${percentage}%`;
+                valueInverted.textContent = `${percentage}%`;
 
                 setTimeout(() => {
                     numEl.querySelector('span').textContent = Math.floor(Math.random() * 10);
@@ -378,11 +468,20 @@
                 const binEl = document.createElement('div');
                 binEl.className = 'bin';
                 binEl.innerHTML = `
-                    <div class="bin-label">${data.label}</div>
+                    <div class="bin-box-container">
+                        <div class="bin-box" id="bin-box-${data.label}">
+                            <div class="bin-side bin-front">
+                                <span class="bin-label">${data.label}</span>
+                            </div>
+                            <div class="bin-lid lid-left"></div>
+                            <div class="bin-lid lid-right"></div>
+                        </div>
+                    </div>
                     <div class="bin-progress-container">
                         <div class="bin-progress-bar" id="progress-${data.label}"></div>
-                    </div>
-                    <div class="bin-value" id="value-${data.label}">0%</div>`;
+                        <div class="bin-value-base" id="value-base-${data.label}">0%</div>
+                        <div class="bin-value-inverted" id="value-inverted-${data.label}">0%</div>
+                    </div>`;
                 footer.appendChild(binEl);
             });
 
@@ -555,6 +654,13 @@
                     const availableBins = binsData.filter(b => b.value < b.target);
                     if (availableBins.length > 0) {
                         const targetBin = availableBins[Math.floor(Math.random() * availableBins.length)];
+                        
+                        const binBoxEl = document.getElementById(`bin-box-${targetBin.label}`);
+                        binBoxEl.classList.add('open');
+                        setTimeout(() => {
+                            binBoxEl.classList.remove('open');
+                        }, 500 + selectedElements.length * 100);
+
                         selectedElements.forEach((el, index) => {
                             setTimeout(() => {
                                 sortNumber(el, targetBin);
