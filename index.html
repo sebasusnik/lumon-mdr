@@ -157,11 +157,18 @@
             grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
             gap: 15px;
             padding: 10px;
+            box-sizing: border-box;
             align-items: center;
             justify-items: center;
-            overflow: hidden;
             user-select: none;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
         }
+        #refinement-grid::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, and Opera */
+        }
+
 
         .grid-number {
             text-align: center;
@@ -209,9 +216,10 @@
         #refinement-footer {
             display: flex;
             justify-content: space-around;
-            padding: 15px 10px;
+            /* FIX: Reduced padding and margin to give more space to the grid */
+            padding: 10px;
             border-top: 2px solid var(--text-color);
-            margin-top: 10px;
+            margin-top: 5px;
             gap: 15px;
         }
 
@@ -603,7 +611,6 @@
             const progressFill = progressContainer.querySelector('.progress-fill');
             const progressText = progressContainer.querySelector('.progress-text');
 
-            // FIX: New erratic loading animation
             let progress = 0;
             while (progress < 100) {
                 let jump = Math.random() * 10;
