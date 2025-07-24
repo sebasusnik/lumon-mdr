@@ -313,18 +313,21 @@
             left: 0;
             display: flex;
             align-items: center;
-            justify-content: center;
+            /* FIX: Align text to the left */
+            justify-content: flex-start;
+            padding-left: 5px;
+            box-sizing: border-box;
             font-size: 16px;
         }
         .bin-value-base {
             color: var(--text-color);
-            z-index: 2; /* FIX: Behind inverted text */
+            z-index: 2;
         }
         .bin-value-inverted {
             color: var(--monitor-bg);
-            z-index: 3; /* FIX: On top of base text */
+            z-index: 3;
             clip-path: inset(0 100% 0 0);
-            transition: none; /* Let JS handle updates instantly */
+            transition: none;
         }
 
 
