@@ -651,8 +651,11 @@
             window.addEventListener('mousemove', (e) => {
                 if (!isSelecting) return;
                 
-                const currentX = e.clientX;
-                const currentY = e.clientY;
+                const monitorScreen = document.querySelector('.monitor-screen');
+                const monitorRect = monitorScreen.getBoundingClientRect();
+                
+                const currentX = Math.max(monitorRect.left, Math.min(e.clientX, monitorRect.right));
+                const currentY = Math.max(monitorRect.top, Math.min(e.clientY, monitorRect.bottom));
 
                 const newX = Math.min(startX, currentX);
                 const newY = Math.min(startY, currentY);
@@ -719,12 +722,12 @@
             });
             
             function cursorJitterLoop() {
-                const radius = 100; // Increased radius
-                const maxJitter = 2.0; // Unified jitter intensity
+                const radius = 100;
+                const maxJitter = 2.0;
 
                 numberElements.forEach(numEl => {
                     if (isGrown(numEl) || numEl.classList.contains('sorted')) {
-                        return; // Skip grown numbers
+                        return;
                     }
 
                     const rect = numEl.getBoundingClientRect();
