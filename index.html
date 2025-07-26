@@ -585,27 +585,14 @@
                 const canGrow = allIndices.every(idx => numberElements[idx] && !isGrown(numberElements[idx]) && !numberElements[idx].classList.contains('sorted'));
                 
                 if (canGrow) {
-                    const groupElements = [];
                     groupIndices.forEach(idx => {
                         numberElements[idx].classList.add(`grown-${growthLevel}`);
                         numberElements[idx].dataset.group = startIndex;
-                        groupElements.push(numberElements[idx]);
                     });
                     neighborIndices.forEach(idx => {
                         numberElements[idx].classList.add('grown-neighbor');
                         numberElements[idx].dataset.group = startIndex;
-                        groupElements.push(numberElements[idx]);
                     });
-
-                    const intervalId = setInterval(() => {
-                        groupElements.forEach(el => {
-                            if (el.classList.contains('sorted')) return;
-                            const dx = (Math.random() - 0.5) * 2;
-                            const dy = (Math.random() - 0.5) * 2;
-                            el.querySelector('span').style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
-                        });
-                    }, 100 + Math.random() * 50);
-                    jitterIntervals.set(startIndex, intervalId);
                 }
             }
 
@@ -614,9 +601,6 @@
                  if (grownGroups.length > 3) {
                      const groupToShrink = grownGroups[Math.floor(Math.random() * grownGroups.length)];
                      
-                     clearInterval(jitterIntervals.get(groupToShrink));
-                     jitterIntervals.delete(groupToShrink);
-
                      numberElements.forEach(el => {
                          if (el.dataset.group == groupToShrink) {
                              el.className = 'grid-number';
@@ -721,35 +705,42 @@
                 mouseY = e.clientY - rect.top;
             });
             
-            function cursorJitterLoop() {
+            function animationLoop() {
                 const radius = 100;
                 const maxJitter = 2.0;
+                const maxGrowth = 1.4; // Increased growth
 
                 numberElements.forEach(numEl => {
-                    if (isGrown(numEl) || numEl.classList.contains('sorted')) {
-                        return;
-                    }
+                    const span = numEl.querySelector('span');
+                    if (numEl.classList.contains('sorted')) return;
 
-                    const rect = numEl.getBoundingClientRect();
-                    const monitorRect = monitorScreen.getBoundingClientRect();
-                    const centerX = rect.left - monitorRect.left + rect.width / 2;
-                    const centerY = rect.top - monitorRect.top + rect.height / 2;
+                    let dx = 0, dy = 0, scale = 1;
 
-                    const dist = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
-
-                    if (dist < radius) {
-                        const jitterAmount = (1 - dist / radius) * maxJitter;
-                        const dx = (Math.random() - 0.5) * jitterAmount;
-                        const dy = (Math.random() - 0.5) * jitterAmount;
-                        numEl.querySelector('span').style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
+                    if (isGrown(numEl)) {
+                        dx = (Math.random() - 0.5) * 2;
+                        dy = (Math.random() - 0.5) * 2;
                     } else {
-                        numEl.querySelector('span').style.transform = 'translate(0,0)';
+                        const rect = numEl.getBoundingClientRect();
+                        const monitorRect = monitorScreen.getBoundingClientRect();
+                        const centerX = rect.left - monitorRect.left + rect.width / 2;
+                        const centerY = rect.top - monitorRect.top + rect.height / 2;
+                        const dist = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
+
+                        if (dist < radius) {
+                            const proximity = 1 - (dist / radius);
+                            const jitterAmount = proximity * maxJitter;
+                            dx = (Math.random() - 0.5) * jitterAmount;
+                            dy = (Math.random() - 0.5) * jitterAmount;
+                            scale = 1 + proximity * (maxGrowth - 1);
+                        }
                     }
+                    
+                    span.style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${scale.toFixed(2)})`;
                 });
 
-                requestAnimationFrame(cursorJitterLoop);
+                requestAnimationFrame(animationLoop);
             }
-            cursorJitterLoop();
+            animationLoop();
         }
 
         async function runBootSequence() {
