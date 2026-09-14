@@ -53,6 +53,11 @@
             display: flex;
         }
 
+        @media (hover: none) {
+            .monitor-screen { cursor: auto; }
+            #custom-cursor { display: none !important; }
+        }
+
         .monitor-screen {
             width: 100%;
             height: 100%;
@@ -60,6 +65,7 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.8) inset;
             position: relative;
             cursor: none;
+            touch-action: none;
             padding: 1.5rem;
             box-sizing: border-box;
             display: flex;
@@ -181,6 +187,14 @@
         #refinement-grid::-webkit-scrollbar {
             display: none;
         }
+
+        /* Dragging across the grid is the selection gesture, so the browser must
+           not read it as a scroll. Chrome decides that from the element under
+           the finger, so an ancestor alone is not enough: without this the
+           sequence is pointerdown, pointermove, pointercancel. */
+        #refinement-container,
+        #refinement-grid,
+        .grid-number { touch-action: none; }
 
         .grid-number {
             text-align: center;
@@ -620,7 +634,7 @@
             let isSelecting = false;
             let startX, startY;
 
-            grid.addEventListener('mousedown', (e) => {
+            grid.addEventListener('pointerdown', (e) => {
                 isSelecting = true;
                 startX = e.clientX;
                 startY = e.clientY;
@@ -629,10 +643,12 @@
                 selectionBox.style.width = '0px';
                 selectionBox.style.height = '0px';
                 selectionBox.style.display = 'block';
+                // Keeps the drag alive if the finger leaves the grid.
+                grid.setPointerCapture(e.pointerId);
                 e.preventDefault();
             });
 
-            window.addEventListener('mousemove', (e) => {
+            window.addEventListener('pointermove', (e) => {
                 if (!isSelecting) return;
                 
                 const monitorScreen = document.querySelector('.monitor-screen');
@@ -665,7 +681,16 @@
                 });
             });
 
-            window.addEventListener('mouseup', (e) => {
+            window.addEventListener('pointercancel', () => {
+                // A touch gesture the browser takes over (a call, a notification)
+                // ends the drag without a pointerup.
+                if (!isSelecting) return;
+                isSelecting = false;
+                selectionBox.style.display = 'none';
+                grid.querySelectorAll('.grid-number.selected').forEach((n) => n.classList.remove('selected'));
+            });
+
+            window.addEventListener('pointerup', (e) => {
                 if (!isSelecting) return;
                 isSelecting = false;
                 selectionBox.style.display = 'none';
@@ -699,7 +724,7 @@
             let mouseY = -1000;
             const monitorScreen = document.querySelector('.monitor-screen');
 
-            monitorScreen.addEventListener('mousemove', (e) => {
+            monitorScreen.addEventListener('pointermove', (e) => {
                 const rect = monitorScreen.getBoundingClientRect();
                 mouseX = e.clientX - rect.left;
                 mouseY = e.clientY - rect.top;
@@ -819,17 +844,19 @@
         const customCursor = document.getElementById('custom-cursor');
         const monitorScreen = document.querySelector('.monitor-screen');
 
-        monitorScreen.addEventListener('mouseenter', () => {
+        monitorScreen.addEventListener('pointerenter', (e) => {
+            if (e.pointerType !== 'mouse') return;
             customCursor.style.display = 'block';
             document.body.classList.add('hide-native-cursor');
         });
 
-        monitorScreen.addEventListener('mouseleave', () => {
+        monitorScreen.addEventListener('pointerleave', () => {
             customCursor.style.display = 'none';
             document.body.classList.remove('hide-native-cursor');
         });
 
-        window.addEventListener('mousemove', (e) => {
+        window.addEventListener('pointermove', (e) => {
+            if (e.pointerType !== 'mouse') return;
             customCursor.style.left = `${e.clientX}px`;
             customCursor.style.top = `${e.clientY}px`;
         });
